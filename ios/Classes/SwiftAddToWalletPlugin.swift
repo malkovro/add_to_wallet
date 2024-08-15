@@ -34,7 +34,9 @@ class PKAddPassButtonNativeViewFactory: NSObject, FlutterPlatformViewFactory {
 
 class PKAddPassButtonNativeView: NSObject, FlutterPlatformView {
     private var _view: UIView
-    private var _pass: FlutterStandardTypedData
+    private var _pass: FlutterStandardTypedData?
+    private var _issuerData: String?
+    private var _signature: String?
     private var _width: CGFloat
     private var _height: CGFloat
     private var _key: String
@@ -48,7 +50,9 @@ class PKAddPassButtonNativeView: NSObject, FlutterPlatformView {
         channel: FlutterMethodChannel
     ) {
         _view = UIView()
-        _pass = args["pass"] as! FlutterStandardTypedData
+        _pass = args["pass"] as? FlutterStandardTypedData
+        _issuerData = args["issuerData"] as? String
+        _signature = args["signature"] as? String
         _width = args["width"] as? CGFloat ?? 140
         _height = args["height"] as? CGFloat ?? 30
         _key = args["key"] as! String
@@ -69,24 +73,50 @@ class PKAddPassButtonNativeView: NSObject, FlutterPlatformView {
     }
 
     @objc func passButtonAction() {
-        var newPass: PKPass
-        do {
-            newPass = try PKPass(data: _pass.data)
-        } catch {
-            print("No valid Pass data passed")
+        if (_pass != nil) {
+            var newPass: PKPass
+            do {
+                newPass = try PKPass(data: _pass!.data)
+            } catch {
+                print("No valid Pass data passed")
+                return
+            }
+            guard let controller = PKAddPassesViewController(pass: newPass) else {
+                print("View controller messed up")
+                return
+            }
+            guard let rootVC = UIApplication.shared.keyWindow?.rootViewController else {
+                print("Root VC unavailable")
+                return
+            }
+            rootVC.present(controller, animated: true)
+            _invokeAddButtonPressed()
+        }
+        else if(_issuerData != nil && _signature != nil) {
+            if #available(iOS 16.4, *) {
+                let issuerData: Data = _issuerData!.data(using: .utf8)!
+                let signature: Data = _signature!.data(using: .utf8)!
+                if let controllerWithIssuerData = ExceptionHandler.safeAddPassesViewController(withIssuerData: issuerData, signature: signature) {
+                    guard let rootVC = UIApplication.shared.keyWindow?.rootViewController else {
+                        print("Root VC unavailable")
+                        return
+                    }
+                    rootVC.present(controllerWithIssuerData, animated: true)
+                    _invokeAddButtonPressed()
+                }
+                else {
+                    print("No valid issuer data and signature passed")
+                    return
+                }
+            } else {
+                print("icloud binding only available from iOS 16.4")
+                return
+            }
+        }
+        else {
+            print("Pass or issuerData and signature must not null")
             return
         }
-        guard let addPassViewController = PKAddPassesViewController(pass: newPass) else {
-            print("View controller messed up")
-            return
-        }
-
-        guard let rootVC = UIApplication.shared.keyWindow?.rootViewController else {
-            print("Root VC unavailable")
-            return
-        }
-        rootVC.present(addPassViewController, animated: true)
-        _invokeAddButtonPressed()
     }
     
     func _invokeAddButtonPressed() {

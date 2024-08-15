@@ -9,7 +9,9 @@ import 'package:uuid/uuid.dart';
 class AddToWalletButton extends StatefulWidget {
   static const viewType = 'PKAddPassButton';
 
-  final List<int> pkPass;
+  final List<int>? pkPass;
+  final String? issuerData;
+  final String? signature;
   final double width;
   final double height;
   final Widget? unsupportedPlatformChild;
@@ -18,12 +20,16 @@ class AddToWalletButton extends StatefulWidget {
 
   AddToWalletButton(
       {Key? key,
-      required this.pkPass,
+      this.pkPass,
+      this.issuerData,
+      this.signature,
       required this.width,
       required this.height,
       this.onPressed,
       this.unsupportedPlatformChild})
-      : super(key: key);
+      : super(key: key) {
+    assert(pkPass != null || (issuerData != null && signature != null));
+  }
 
   @override
   _AddToWalletButtonState createState() => _AddToWalletButtonState();
@@ -34,6 +40,8 @@ class _AddToWalletButtonState extends State<AddToWalletButton> {
         'width': widget.width,
         'height': widget.height,
         'pass': widget.pkPass,
+        'issuerData': widget.issuerData,
+        'signature': widget.signature,
         'key': widget._id,
       };
 
@@ -67,7 +75,8 @@ class _AddToWalletButtonState extends State<AddToWalletButton> {
           creationParamsCodec: const StandardMessageCodec(),
         );
       default:
-        if (widget.unsupportedPlatformChild == null) throw UnsupportedError('Unsupported platform view');
+        if (widget.unsupportedPlatformChild == null)
+          throw UnsupportedError('Unsupported platform view');
         return widget.unsupportedPlatformChild!;
     }
   }
